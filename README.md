@@ -1,8 +1,3 @@
-حتماً. README فعلی را هم بررسی کردم؛ مشکل اصلی نسخه فعلی این است که کدها به‌جای code block واقعی به‌صورت inline نمایش داده می‌شوند و یک Heading اشتباه هم دارد. ([GitHub][1])
-
-این نسخه را **کامل جایگزین کل `README.md`** کن:
-
-````markdown
 # SPlus Client 🇮🇷
 
 یک Client پایتونی برای کار با **سروش‌پلاس (SPlus)** از طریق نسخه وب آن.
@@ -464,6 +459,3 @@ python main.py
 ---
 
 > ساخته شده برای توسعه و اتوماسیون سروش‌پلاس 🇮🇷
-````
-
-[1]: https://github.com/RezaR2D/splus-client/blob/main/README.md "splus-client/README.md at main · RezaR2D/splus-client · GitHub"
