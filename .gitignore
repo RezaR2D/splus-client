@@ -1,61 +1,9 @@
-# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Virtual environments
 .venv/
 venv/
-env/
-ENV/
-
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Session files
 *.session
-*.session-journal
-
-# Selenium / Chrome
-chromedriver
-chromedriver.exe
-selenium-manager/
-
-# Build / Packaging
+.env
 build/
 dist/
 *.egg-info/
-.eggs/
-
-# Testing / Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-
-# Type checking
-.mypy_cache/
-.pyright/
-
-# IDEs
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-
-# Local test/example files
-test_*.py
