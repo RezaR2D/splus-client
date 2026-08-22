@@ -59,6 +59,185 @@ client = SPlusClient(display_logs=True)
 فرآیند ورود به حساب توسط کتابخانه به‌صورت خودکار انجام می‌شود و نیازی نیست فرآیند Login را به‌صورت دستی در کد ربات پیاده‌سازی کنید.
 
 ---
+# 📤 ارسال پیام
+
+برای ارسال پیام متنی از `send_message()` استفاده کنید:
+
+```python
+client.send_message(
+    chat_id=chat_id,
+    text="سلام!"
+)
+```
+
+### ↩️ ارسال پیام به‌صورت Reply
+
+با استفاده از `reply_to` می‌توانید پیام را مستقیماً در پاسخ به یک پیام مشخص ارسال کنید:
+
+```python
+client.send_message(
+    chat_id=chat_id,
+    text="این یک پاسخ است.",
+    reply_to=message_id
+)
+```
+
+اگر `reply_to` مشخص نشود، پیام به‌صورت عادی ارسال خواهد شد.
+
+```python
+client.send_message(
+    chat_id=chat_id,
+    text="یک پیام عادی"
+)
+```
+
+---
+
+# 📎 ارسال فایل
+
+کتابخانه امکان ارسال فایل را نیز فراهم می‌کند.
+
+برای ارسال فایل کافی است مسیر فایل را مشخص کنید:
+
+```python
+client.send_file(
+    chat_id=chat_id,
+    file_path="example.jpg"
+)
+```
+
+فایل می‌تواند از انواع مختلف باشد و Client فایل را برای ارسال از طریق SPlus آماده می‌کند.
+
+مثال:
+
+```python
+client.send_file(
+    chat_id="123456789",
+    file_path="C:/Users/User/Desktop/photo.jpg"
+)
+```
+
+---
+
+## 📝 ارسال فایل با کپشن
+
+کپشن فایل اختیاری است.
+
+بدون کپشن:
+
+```python
+client.send_file(
+    chat_id=chat_id,
+    file_path="photo.jpg"
+)
+```
+
+با کپشن:
+
+```python
+client.send_file(
+    chat_id=chat_id,
+    file_path="photo.jpg",
+    caption="این تصویر توسط ربات ارسال شده است."
+)
+```
+
+بنابراین می‌توانید بسته به نیاز، فایل را بدون متن یا همراه با کپشن ارسال کنید.
+
+---
+
+# 📌 سنجاق کردن پیام
+
+برای سنجاق کردن یک پیام از `pin_message()` استفاده کنید:
+
+```python
+client.pin_message(
+    chat_id,
+    message_id
+)
+```
+
+---
+
+# 📍 برداشتن سنجاق پیام
+
+اگر پیامی قبلاً سنجاق شده باشد، می‌توانید با `unpin_message()` سنجاق آن را بردارید:
+
+```python
+client.unpin_message(
+    chat_id,
+    message_id
+)
+```
+
+---
+
+# 🗑️ حذف پیام
+
+برای حذف یک پیام از `delete_message()` استفاده کنید:
+
+```python
+client.delete_message(
+    chat_id,
+    message_id
+)
+```
+
+---
+
+# 🤖 مثال ترکیبی
+
+می‌توانید تمام این قابلیت‌ها را در منطق ربات خود ترکیب کنید.
+
+برای مثال، ربات می‌تواند پیام را دریافت کند، به آن پاسخ دهد، فایل ارسال کند و پیام را مدیریت کند:
+
+```python
+from splus_client import SPlusClient
+
+
+client = SPlusClient(display_logs=True)
+
+
+@client.on_message
+def on_new_message(update, chat_id, message_id):
+
+    text = str(
+        update.get("message", {})
+              .get("content", {})
+              .get("text", {})
+              .get("text", "")
+    )
+
+    print("📩 پیام:", text)
+
+    # پاسخ به پیام
+    client.send_message(
+        chat_id=chat_id,
+        text="پیامت دریافت شد.",
+        reply_to=message_id
+    )
+
+    # ارسال فایل با کپشن
+    client.send_file(
+        chat_id=chat_id,
+        file_path="example.jpg",
+        caption="فایل ارسال شد."
+    )
+یا
+    client.send_file(
+        chat_id=chat_id,
+        file_path="https://google.com/logo.jpg",
+        caption="فایل ارسال شد."
+    )
+
+    # سنجاق پیام
+    client.pin_message(
+        chat_id,
+        message_id
+    )
+```
+
+> نکته: قبل از استفاده از `send_file()` مطمئن شوید مسیر فایل وجود دارد و فایل توسط برنامه قابل دسترسی است.
 
 # 📥 دریافت پیام
 
