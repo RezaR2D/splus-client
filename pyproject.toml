@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "splus-client"
+version = "1.0.0"
+description = "Python client for SPlus (Soroush Plus) web automation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+
+authors = [
+    {name = "RezaR2D"}
+]
+
+dependencies = [
+    "selenium>=4.0",
+    "requests>=2.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
