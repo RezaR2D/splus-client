@@ -10,7 +10,7 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from .login import login
-
+import atexit
 class SPlusClient:
     """
     کلاینت Selenium برای web.splus.ir
@@ -34,6 +34,11 @@ class SPlusClient:
         driver = self.create_driver()
         driver.get(self.LOGIN_URL)
         self.driver=driver
+        self._update_thread = None
+        self._update_stop = None
+        self._closed = False
+        self._message_handler = None
+        atexit.register(self.close)
         if not has_session:
             self._log("🔐 Session not found")
             login(driver)
@@ -41,12 +46,27 @@ class SPlusClient:
             self._log("✅ Session found")
         self.wait_until_ready(driver, max_wait=90)
         time.sleep(10)
-        
-    def close(self):
-        self.close_message_handler()
-        if self.driver:
-            self.driver.quit()
 
+    def close(self):
+        if self._closed:
+            return
+
+        self._closed = True
+
+        try:
+            self.stop()
+        except Exception:
+            pass
+
+        if getattr(self, "driver", None):
+            try:
+                self.driver.quit()
+            except Exception:
+                pass
+            finally:
+                self.driver = None
+
+            
     def _log(self, *args, **kwargs):
         if self.display_logs:
             print(*args, **kwargs)
@@ -94,16 +114,21 @@ class SPlusClient:
         return driver
 
 
-    def wait_until_ready(self,driver, max_wait=90):
+    def wait_until_ready(self, driver, max_wait=90):
         self._log("⏳ منتظر لود کامل صفحه...")
         start = time.time()
+
         while time.time() - start < max_wait:
             try:
                 has_floader = driver.execute_script("""
                     const el = document.getElementById('floader');
+
                     if (!el) return false;
+
                     const style = window.getComputedStyle(el);
-                    return style.display !== 'none' && el.offsetParent !== null;
+
+                    return style.display !== 'none' &&
+                        el.offsetParent !== null;
                 """)
 
                 if has_floader:
@@ -127,10 +152,10 @@ class SPlusClient:
             except Exception:
                 pass
 
-                time.sleep(1.5)
+            time.sleep(1.5)
 
-            self._log("⚠️ زمان انتظار تمام شد، ادامه می‌دهیم...")
-            return False
+        self._log("⚠️ زمان انتظار تمام شد، ادامه می‌دهیم...")
+        return False
 
 
     def _initialize(self):
@@ -389,50 +414,39 @@ class SPlusClient:
         self._update_hook_installed = True
         self._log("✅ هوک آپدیت نصب شد (سبک و غیرمخرب)")
 
+        # ------------------------------------------------------------------
+    # مدیریت دریافت پیام
     # ------------------------------------------------------------------
-    # دریافت آپدیت‌ها
-    # ------------------------------------------------------------------
-    def is_message_handler_running(self):
-        return bool(
-        hasattr(self, "_update_thread")
-        and self._update_thread
-        and self._update_thread.is_alive()
-    )
-    def close_message_handler(self):
-        if hasattr(self, "_update_stop") and self._update_stop:
-            self._update_stop.set()
 
-        if (
-            hasattr(self, "_update_thread")
-            and self._update_thread
-            and self._update_thread.is_alive()
-        ):
-            self._update_thread.join(timeout=2)
-
-        self._update_thread = None
-        self._update_stop = None
-
-        self._log("🛑 Message handler stopped")
-
-
-    def set_message_handler(
-        self,
-        handler,
-        include_self=False,
-        poll_interval=0.35
-    ):
+    def on_message(self, handler):
         if not callable(handler):
             raise TypeError("handler must be callable")
+
+        if self._message_handler is not None:
+            raise RuntimeError("Message handler is already registered")
+
+        self._message_handler = handler
+        return handler
+
+    def run(self, include_self=False, poll_interval=0.35):
+        if self._message_handler is None:
+            raise RuntimeError(
+                "No message handler registered. "
+                "Use @client.on_message first."
+            )
 
         if poll_interval <= 0:
             raise ValueError("poll_interval must be greater than 0")
 
-        if self.is_message_handler_running():
+        if (
+            self._update_thread
+            and self._update_thread.is_alive()
+        ):
             raise RuntimeError("Message handler is already running")
 
         self._install_update_hook()
-        own_id = self._get_own_user_id()
 
+        own_id = self._get_own_user_id()
         self._update_stop = threading.Event()
 
         def worker():
@@ -440,59 +454,40 @@ class SPlusClient:
             self._log("📥 Message handler started")
 
             while not self._update_stop.is_set():
+                updates = []
                 try:
+                    # بدون قفل طولانی — فقط یک execute_script
                     updates = self.driver.execute_script("""
                         const q = window.__splus_update_queue || [];
                         window.__splus_update_queue = [];
                         return q;
                     """) or []
-
-                    for update in updates:
-                        if not isinstance(update, dict):
-                            continue
-
-                        if update.get("@type") != "newMessage":
-                            continue
-
-                        msg = update.get("message") or update
-
-                        sender = str(
-                            msg.get("senderId") or ""
-                        )
-
-                        chat_id = str(
-                            msg.get("chatId")
-                            or update.get("chatId")
-                            or ""
-                        )
-
-                        message_id = (
-                            msg.get("id")
-                            or update.get("id")
-                        )
-
-                        if (
-                            not include_self
-                            and own_id
-                            and sender == str(own_id)
-                        ):
-                            continue
-
-                        try:
-                            handler(
-                                update=update,
-                                chat_id=chat_id,
-                                message_id=message_id
-                            )
-                        except Exception as e:
-                            self._log(
-                                f"❌ Message handler error: {e}"
-                            )
-
                 except Exception as e:
-                    self._log(
-                        f"⚠️ Message handler error: {e}"
-                    )
+                    if not self._update_stop.is_set():
+                        self._log(f"⚠️ poll error: {e}")
+
+                for update in updates:
+                    if not isinstance(update, dict):
+                        continue
+                    if update.get("@type") != "newMessage":
+                        continue
+
+                    msg = update.get("message") or update
+                    sender = str(msg.get("senderId") or "")
+                    chat_id = str(msg.get("chatId") or update.get("chatId") or "")
+                    message_id = msg.get("id") or update.get("id")
+
+                    if not include_self and own_id and sender == str(own_id):
+                        continue
+
+                    try:
+                        self._message_handler(
+                            update=update,
+                            chat_id=chat_id,
+                            message_id=message_id,
+                        )
+                    except Exception as e:
+                        self._log(f"❌ Message handler error: {e}")
 
                 self._update_stop.wait(poll_interval)
 
@@ -505,8 +500,31 @@ class SPlusClient:
         )
 
         self._update_thread.start()
+        self._update_stop.wait()
 
-        return True
+    def stop(self):
+        thread = getattr(self, "_update_thread", None)
+
+        if not thread:
+            return
+
+        self._log("🛑 Stopping message handler...")
+
+        stop_event = getattr(self, "_update_stop", None)
+
+        if stop_event:
+            stop_event.set()
+
+        if (
+            thread.is_alive()
+            and thread is not threading.current_thread()
+        ):
+            thread.join(timeout=2)
+
+        self._update_thread = None
+        self._update_stop = None
+
+        self._log("✅ Message handler stopped")
 
     # ------------------------------------------------------------------
     # ارسال پیام متنی (با ریپلای واقعی)
