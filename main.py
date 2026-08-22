@@ -1,3 +1,55 @@
+import sys
+import subprocess
+from pathlib import Path
+import importlib.util
+
+
+def install_requirements():
+    requirements_file = Path(__file__).parent / "requirements.txt"
+
+    if not requirements_file.exists():
+        print("❌ فایل requirements.txt پیدا نشد.")
+        sys.exit(1)
+
+    required_packages = {
+        "selenium": "selenium",
+        "requests": "requests"
+    }
+
+    missing_packages = []
+
+    for package_name, import_name in required_packages.items():
+        if importlib.util.find_spec(import_name) is None:
+            missing_packages.append(package_name)
+
+    if not missing_packages:
+        return
+
+    print("=" * 50)
+    print("⚠️ بعضی پیش‌نیازها نصب نیستند.")
+    print("📦 در حال نصب پیش‌نیازها...")
+    print("=" * 50)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            str(requirements_file)
+        ]
+    )
+
+    if result.returncode != 0:
+        print("\n❌ نصب پیش‌نیازها ناموفق بود.")
+        sys.exit(1)
+
+    print("\n✅ پیش‌نیازها با موفقیت نصب شدند.")
+
+
+install_requirements()
+
 import os
 import json
 import time
@@ -9,8 +61,15 @@ from login import login
 from splus_client import SPlusClient
 
 """
-- فایل اصلی برنامه که لاگین و کلاس کار با سروش پلاس را مدیریت می کند بعد از نصب پیش نیاز ها با اجرای setup این فایل اجرا شود تا فرایند لاگین اتوماتیک صورت بگیرد
-- https://github.com/RezaR2D
+فایل اصلی برنامه برای مدیریت ورود و کار با سروش‌پلاس.
+
+در صورت نصب نبودن پیش‌نیازها، آن‌ها به‌صورت خودکار
+از طریق requirements.txt نصب می‌شوند.
+
+پس از آماده شدن پیش‌نیازها، فرآیند ورود و اجرای Client
+به‌صورت خودکار انجام می‌شود.
+
+https://github.com/RezaR2D
 """
 SESSION_FILE = "my.session"
 LOGIN_URL = "https://web.splus.ir/"
