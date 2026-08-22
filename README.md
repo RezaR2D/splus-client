@@ -41,7 +41,7 @@
 
 ```bash
 git clone https://github.com/RezaR2D/splus-client.git
-cd REPO_NAME
+cd splus-client
 python setup.py
 ```
 
